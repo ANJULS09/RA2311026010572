@@ -1,65 +1,114 @@
-import Image from "next/image";
+'use client';
+
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Box, Typography, Tabs, Tab, Pagination, CircularProgress, Alert } from '@mui/material';
+import NotificationCard from '../components/NotificationCard';
+import { useNotifications } from '../hooks/useNotifications';
+import { Log } from '../utils/logger';
+import { NotificationType } from '../lib/api';
+
+function NotificationsContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const { notifications, loading, error, fetchList, viewedIds, markAsViewed } = useNotifications();
+
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const typeParam = searchParams.get('notification_type') || 'All';
+
+    const [currentTab, setCurrentTab] = useState<string>(typeParam);
+
+    useEffect(() => {
+        void Log("frontend", "info", "page", `Home page loaded. Page: ${page}, Limit: ${limit}, Type: ${typeParam}`);
+        fetchList({
+            limit,
+            page,
+            notification_type: typeParam as NotificationType | "All"
+        }).catch(console.error);
+    }, [page, limit, typeParam, fetchList]);
+
+    const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+        setCurrentTab(newValue);
+        void Log("frontend", "info", "state", `Notification type filter changed to ${newValue}`);
+        
+        const params = new URLSearchParams(searchParams.toString());
+        if (newValue === 'All') {
+            params.delete('notification_type');
+        } else {
+            params.set('notification_type', newValue);
+        }
+        params.set('page', '1'); // reset to page 1 on filter change
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+        void Log("frontend", "info", "state", `Pagination changed to page ${value}`);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('page', value.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    return (
+        <Box>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3 }}>All Notifications</Typography>
+            
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                <Tabs value={currentTab} onChange={handleTabChange} aria-label="notification types" variant="scrollable" scrollButtons="auto">
+                    <Tab label="All" value="All" />
+                    <Tab label="Placement" value="Placement" />
+                    <Tab label="Result" value="Result" />
+                    <Tab label="Event" value="Event" />
+                </Tabs>
+            </Box>
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                    {error}
+                </Alert>
+            )}
+
+            {loading && !error && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <CircularProgress />
+                </Box>
+            )}
+
+            {!loading && !error && notifications.length === 0 && (
+                <Typography variant="body1" color="text.secondary" align="center" sx={{ my: 4 }}>
+                    No notifications found for the selected filter.
+                </Typography>
+            )}
+
+            {!loading && !error && notifications.map((notif) => (
+                <NotificationCard 
+                    key={notif.ID}
+                    notification={notif}
+                    isViewed={viewedIds.has(notif.ID)}
+                    onView={markAsViewed}
+                />
+            ))}
+
+            {!loading && !error && notifications.length > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                    {/* Assuming arbitrary large count since API doesn't return total count */}
+                    <Pagination 
+                        count={20} 
+                        page={page} 
+                        onChange={handlePageChange} 
+                        color="primary" 
+                    />
+                </Box>
+            )}
+        </Box>
+    );
+}
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    return (
+        <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>}>
+            <NotificationsContent />
+        </Suspense>
+    );
 }
