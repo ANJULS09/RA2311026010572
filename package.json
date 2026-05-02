@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "notification_app_fe",
   "version": "0.1.0",
   "private": true,
@@ -26,5 +27,19 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+=======
+  "name": "logging_middleware",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+>>>>>>> 4a8b46d26a3239dde18d0bdd7a70f151de832b6b
   }
 }
