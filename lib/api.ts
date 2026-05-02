@@ -1,4 +1,4 @@
-import { Log, getToken } from '@/utils/logger';
+import { Log, getToken, clearToken } from '@/utils/logger';
 
 export type NotificationType = "Placement" | "Result" | "Event";
 
@@ -35,12 +35,25 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
         const token = await getToken();
         if (!token) throw new Error("Failed to get auth token");
 
-        const response = await fetch(finalUrl, {
+        let response = await fetch(finalUrl, {
             headers: {
                 "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
             }
         });
+
+        if (response.status === 401 || response.status === 403) {
+            clearToken();
+            const newToken = await getToken();
+            if (!newToken) throw new Error("Failed to get auth token on retry");
+            
+            response = await fetch(finalUrl, {
+                headers: {
+                    "Authorization": `Bearer ${newToken}`,
+                    "Content-Type": "application/json"
+                }
+            });
+        }
 
         if (!response.ok) {
             let errorMsg = response.statusText;
@@ -55,15 +68,20 @@ export async function fetchNotifications(params: FetchNotificationsParams): Prom
 
         const data = await response.json();
         
-        if (!Array.isArray(data)) {
+        let notificationsArray: any[] = [];
+        if (Array.isArray(data)) {
+            notificationsArray = data;
+        } else if (data && typeof data === 'object' && Array.isArray(data.notifications)) {
+            notificationsArray = data.notifications;
+        } else {
             if (data && typeof data === 'object' && 'message' in data) {
                 throw new Error(data.message as string);
             }
             throw new Error("Expected array response from API");
         }
 
-        await Log("frontend", "info", "api", `Successfully fetched ${data.length} notifications`);
-        return data as Notification[];
+        await Log("frontend", "info", "api", `Successfully fetched ${notificationsArray.length} notifications`);
+        return notificationsArray as Notification[];
     } catch (err: unknown) {
         const error = err as Error;
         await Log("frontend", "error", "api", `API fetch error: ${error.message}`);

@@ -13,6 +13,11 @@ const AUTH_CREDENTIALS = {
 let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 
+export function clearToken() {
+  cachedToken = null;
+  tokenExpiry = null;
+}
+
 export async function getToken(): Promise<string> {
   // If we have a cached token and it hasn't expired (adding 5 min buffer), return it
   if (cachedToken && tokenExpiry && Date.now() < tokenExpiry - 300000) {
@@ -57,7 +62,7 @@ export async function Log(
     const token = await getToken();
     if (!token) return;
 
-    await fetch(LOG_API, {
+    let response = await fetch(LOG_API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -65,6 +70,21 @@ export async function Log(
       },
       body: JSON.stringify({ stack, level, package: pkg, message }),
     });
+
+    if (response.status === 401 || response.status === 403) {
+      clearToken();
+      const newToken = await getToken();
+      if (!newToken) return;
+
+      await fetch(LOG_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify({ stack, level, package: pkg, message }),
+      });
+    }
   } catch (error) {
     // silently fail
   }
