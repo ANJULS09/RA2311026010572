@@ -1,21 +1,71 @@
-export type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";
-export type LogPackage = "api" | "component" | "hook" | "page" | "state" | "style" | "auth" | "config" | "middleware" | "utils";
+const LOG_API = "/api/logs";
+const AUTH_API = "/api/auth";
 
-/**
- * Reusable Log function that sends logs to a remote service.
- * Do not use console.log in the application, use this instead.
- */
-export async function Log(stack: "frontend", level: LogLevel, pkg: LogPackage, message: string): Promise<void> {
+const AUTH_CREDENTIALS = {
+  email: "as5067@srmist.edu.in",
+  name: "anjul shukla",
+  rollNo: "ra2311026010572",
+  accessCode: "QkbpxH",
+  clientID: "9c5d40f8-c2d8-49ae-9a74-87988af79b69",
+  clientSecret: "dAKcZwrbzhVXUPQT"
+};
+
+let cachedToken: string | null = null;
+let tokenExpiry: number | null = null;
+
+export async function getToken(): Promise<string> {
+  // If we have a cached token and it hasn't expired (adding 5 min buffer), return it
+  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry - 300000) {
+    return cachedToken;
+  }
+
   try {
-    await fetch("http://20.207.122.201/evaluation-service/logs", {
+    const response = await fetch(AUTH_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(AUTH_CREDENTIALS),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Auth failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    cachedToken = data.access_token;
+    // data.expires_in is usually in seconds or unix timestamp. Let's assume timestamp or seconds.
+    // Looking at the response: "expires_in": 1777705538. This is a unix timestamp in seconds.
+    tokenExpiry = data.expires_in * 1000;
+    
+    return cachedToken as string;
+  } catch (error) {
+    console.error("Failed to fetch auth token:", error);
+    return "";
+  }
+}
+
+type LogLevel = "debug" | "info" | "warn" | "error" | "fatal";
+type FrontendPackage = "api" | "component" | "hook" | "page" | "state" | "style" | "auth" | "config" | "middleware" | "utils";
+type Stack = "frontend" | "backend";
+
+export async function Log(
+  stack: Stack,
+  level: LogLevel,
+  pkg: FrontendPackage,
+  message: string
+): Promise<void> {
+  try {
+    const token = await getToken();
+    if (!token) return;
+
+    await fetch(LOG_API, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJhczUwNjdAc3JtaXN0LmVkdS5pbiIsImV4cCI6MTc3NzY5OTM4MiwiaWF0IjoxNzc3Njk4NDgyLCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiODdlMTRlZGEtY2E2Zi00MTNiLWIxNTItOTNmNGVmMDU5ZmQ3IiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiYW5qdWwgc2h1a2xhIiwic3ViIjoiOWM1ZDQwZjgtYzJkOC00OWFlLTlhNzQtODc5ODhhZjc5YjY5In0sImVtYWlsIjoiYXM1MDY3QHNybWlzdC5lZHUuaW4iLCJuYW1lIjoiYW5qdWwgc2h1a2xhIiwicm9sbE5vIjoicmEyMzExMDI2MDEwNTcyIiwiYWNjZXNzQ29kZSI6IlFrYnB4SCIsImNsaWVudElEIjoiOWM1ZDQwZjgtYzJkOC00OWFlLTlhNzQtODc5ODhhZjc5YjY5IiwiY2xpZW50U2VjcmV0IjoiZEFLY1p3cmJ6aFZYVVBRVCJ9.NzR7crD5-DOdrRn988Q7llnfDQqsbWYaQ1uY0V7ZZlE"
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ stack, level, package: pkg, message })
+      body: JSON.stringify({ stack, level, package: pkg, message }),
     });
   } catch (error) {
-    // Failsafe in case logging fails, we prevent cascading app failures
+    // silently fail
   }
 }

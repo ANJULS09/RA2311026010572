@@ -1,4 +1,4 @@
-import { Log } from '../utils/logger';
+import { Log, getToken } from '@/utils/logger';
 
 export type NotificationType = "Placement" | "Result" | "Event";
 
@@ -15,23 +15,29 @@ export interface FetchNotificationsParams {
     notification_type?: NotificationType | "All";
 }
 
-const API_URL = "http://20.207.122.201/evaluation-service/notifications";
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiYXVkIjoiaHR0cDovLzIwLjI0NC41Ni4xNDQvZXZhbHVhdGlvbi1zZXJ2aWNlIiwiZW1haWwiOiJhczUwNjdAc3JtaXN0LmVkdS5pbiIsImV4cCI6MTc3NzY5OTM4MiwiaWF0IjoxNzc3Njk4NDgyLCJpc3MiOiJBZmZvcmQgTWVkaWNhbCBUZWNobm9sb2dpZXMgUHJpdmF0ZSBMaW1pdGVkIiwianRpIjoiODdlMTRlZGEtY2E2Zi00MTNiLWIxNTItOTNmNGVmMDU5ZmQ3IiwibG9jYWxlIjoiZW4tSU4iLCJuYW1lIjoiYW5qdWwgc2h1a2xhIiwic3ViIjoiOWM1ZDQwZjgtYzJkOC00OWFlLTlhNzQtODc5ODhhZjc5YjY5In0sImVtYWlsIjoiYXM1MDY3QHNybWlzdC5lZHUuaW4iLCJuYW1lIjoiYW5qdWwgc2h1a2xhIiwicm9sbE5vIjoicmEyMzExMDI2MDEwNTcyIiwiYWNjZXNzQ29kZSI6IlFrYnB4SCIsImNsaWVudElEIjoiOWM1ZDQwZjgtYzJkOC00OWFlLTlhNzQtODc5ODhhZjc5YjY5IiwiY2xpZW50U2VjcmV0IjoiZEFLY1p3cmJ6aFZYVVBRVCJ9.NzR7crD5-DOdrRn988Q7llnfDQqsbWYaQ1uY0V7ZZlE";
+const API_URL = "/api/notifications";
+// TOKEN is dynamically fetched now
 
 export async function fetchNotifications(params: FetchNotificationsParams): Promise<Notification[]> {
     await Log("frontend", "info", "api", `Starting API fetch: ${JSON.stringify(params)}`);
     
     try {
-        const url = new URL(API_URL);
-        if (params.limit) url.searchParams.append("limit", params.limit.toString());
-        if (params.page) url.searchParams.append("page", params.page.toString());
+        const paramsStr = new URLSearchParams();
+        if (params.limit) paramsStr.append("limit", params.limit.toString());
+        if (params.page) paramsStr.append("page", params.page.toString());
         if (params.notification_type && params.notification_type !== "All") {
-            url.searchParams.append("notification_type", params.notification_type);
+            paramsStr.append("notification_type", params.notification_type);
         }
 
-        const response = await fetch(url.toString(), {
+        const queryString = paramsStr.toString();
+        const finalUrl = queryString ? `${API_URL}?${queryString}` : API_URL;
+
+        const token = await getToken();
+        if (!token) throw new Error("Failed to get auth token");
+
+        const response = await fetch(finalUrl, {
             headers: {
-                "Authorization": `Bearer ${TOKEN}`,
+                "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
             }
         });

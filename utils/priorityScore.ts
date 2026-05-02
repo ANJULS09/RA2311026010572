@@ -1,5 +1,5 @@
 import { Notification, NotificationType } from '../lib/api';
-import { Log } from './logger';
+import { Log } from '@/utils/logger';
 
 export interface PrioritizedNotification extends Notification {
     ID: string;

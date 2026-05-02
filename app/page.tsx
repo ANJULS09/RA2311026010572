@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Box, Typography, Tabs, Tab, Pagination, CircularProgress, Alert } from '@mui/material';
 import NotificationCard from '../components/NotificationCard';
 import { useNotifications } from '../hooks/useNotifications';
-import { Log } from '../utils/logger';
+import { Log } from '@/utils/logger';
 import { NotificationType } from '../lib/api';
 
 function NotificationsContent() {
@@ -26,7 +26,7 @@ function NotificationsContent() {
             limit,
             page,
             notification_type: typeParam as NotificationType | "All"
-        }).catch(console.error);
+        }).catch((err) => void Log("frontend", "error", "page", String(err)));
     }, [page, limit, typeParam, fetchList]);
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {

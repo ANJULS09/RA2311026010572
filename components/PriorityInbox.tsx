@@ -15,7 +15,7 @@ import {
 import NotificationCard from './NotificationCard';
 import { useNotifications } from '../hooks/useNotifications';
 import { calculatePriorityScore, PrioritizedNotification } from '../utils/priorityScore';
-import { Log } from '../utils/logger';
+import { Log } from '@/utils/logger';
 
 export default function PriorityInbox() {
     const { notifications, loading, error, fetchList, viewedIds, markAsViewed } = useNotifications();
@@ -24,7 +24,7 @@ export default function PriorityInbox() {
 
     useEffect(() => {
         // Fetch all notifications to compute top N
-        fetchList({ limit: 1000 }).catch(console.error);
+        fetchList({ limit: 1000 }).catch((err) => void Log("frontend", "error", "component", String(err)));
     }, [fetchList]);
 
     const topNotifications = useMemo(() => {

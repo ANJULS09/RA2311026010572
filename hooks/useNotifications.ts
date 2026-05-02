@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchNotifications, Notification, FetchNotificationsParams } from '../lib/api';
-import { Log } from '../utils/logger';
+import { Log } from '@/utils/logger';
 
 export function useNotifications() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
